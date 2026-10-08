@@ -23,6 +23,27 @@ def user():
 
 	return "User not found"
 
+@app.route("/blind")
+def blind():
+	blind_id = request.args.get("id")
+
+	connection = sqlite3.connect("sqli_lab.db")
+	cursor = connection.cursor()
+
+	query = "SELECT * FROM users WHERE id = " + blind_id
+	print("SQL QUERY:", query)
+
+	cursor.execute(query)
+
+	result = cursor.fetchone()
+
+	connection.close()
+
+	if result:
+		return "User exists"
+
+	return "User not found"
+
 @app.route("/search")
 def search():
 	search_term = request.args.get("q")
