@@ -407,5 +407,98 @@ Inferring database information one condition at a time
 Automating repetitive requests where appropriate
 Remediation and retesting
 
+SQLi Lab README - Blind SQL Injection
 
+Objective
 
+The next stage of the lab demonstrates blind Boolean-based SQL injection.
+
+Unlike the previous SQL injection tests, the /blind endpoint does not return database records. Instead it returns one of two responses: 
+User exists
+User not found
+
+This difference can be used as a Boolean oracle to determine whether a SQL condition is true or false.
+
+Vulnerable Endpoint
+
+The /blind endpoint uses user-controlled input directly in a SQL query:
+
+```
+query = "SELECT * FROM users WHERE id = " + blind_id
+
+```
+The application that returns only whether a matching record exists:
+
+if result:
+	return "User exists"
+
+return "User not found"
+
+Because the SQL query is constructed through string concatenation, an attacker can inject additional conditions.
+
+Boolean Testing
+
+A true condition: /blind?id=1 AND 1=1 returns: User exists
+A false condition: /blind?id=1 AND 1=2 returns: User not found
+
+This establishes the application's Boolean oracle.
+
+Testing Database Values
+
+The same technique can be used to ask questions about data that the application never directly displays.
+
+For example:
+/blind?id=3 AND role = 'admin' returns: User exists while /blind?id=3 AND role = 'user' returns: User not found.
+
+This allows information to be inferred from the application's responses.
+
+Character Extraction
+
+SQLite's SUBSTR() function can be used to examine individual characters.
+
+For example:
+/blind?id=3 AND SUBSTR(username, 1, 1) = 'a' returns User exists, revealing that the first character is a. The length can also be determined using: /blind?id=3 AND LENGTH(username) = 5 which returns User exists for the admin account.
+
+Manual Extraction
+
+Characters can be narrowed down using comparison operators instead of testing every character individually.
+
+For example:
+/blind?id=3 AND SUBSTR(username, 1, 1) > 'm' can divide the possible characters into two groups.
+
+Repeated comparisons can progressively narrow the search space. This is essentially a blind search, allowing fewer requests than testing every character individually.
+
+Automating Blind SQLi
+
+A Python script was created to automate the extraction process.
+
+The script:
+1. Determines the username length.
+2. Tests each character position.
+3. Uses the application's response as the Boolean oracle.
+4. Uses binary search to reduce the number of requests.
+5. Reconstructs the username character by character.
+6. Accepts the target user ID as a command-line argument.
+
+Example output:
+
+Username length: 5
+Position 1: a
+Position 2: d
+Position 3: m
+Position 4: i
+Position 5: n
+Username: admin
+
+The script was also tested against another user: python blind_sqli.py 1 which successfully extracted: Username: alice
+
+Key Lessons
+
+Blind SQL injection does not require the application to display database contents.
+Differences in application behavior can act as a Boolean oracle.
+SQL conditions can be used to infer information one bit of information at a time.
+LENGTH() can determine the size of unknown values.
+SUBSTR() can extract individual characters.
+Character comparisons can reduce the number of requests through binary search.
+Automation makes blind SQLi practical when extracting larger values.
+Parameterized queries prevent user input from being interpreted as SQL syntax.
