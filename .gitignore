@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+*.pyc
+sqli_lab.db
+.DS_Store
+.env
